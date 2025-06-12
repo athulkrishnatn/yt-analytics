@@ -1,0 +1,75 @@
+//@ts-nocheck
+"use client"
+
+import { useSearchParams } from "next/navigation";
+import useYouTubePlayer from "../hooks/useYouTubePlayer";
+import { useCallback, useEffect } from "react";
+
+const TEMP_API_ENDPOINT = "http://localhost:8000/api/watch-events/"
+
+
+export default function WatchPage() {
+    const searchparams = useSearchParams();
+    const {v: video_id, t:startTime} = Object.fromEntries(searchparams)
+    const playerElementId = "youtube-player"
+    
+    const playerState = useYouTubePlayer(video_id, playerElementId, startTime, 1500 )
+    const url = `https://www.youtube.com/embed/${video_id}`
+    console.log(playerState)
+
+    //usecallback -> fetch -> fastapi -> timescale
+    // useeffect call the callback fn
+
+    const updateBackend = useCallback(async (currentPlayerState) => {
+      const headers = {'Content-Type': 'application/json'}
+      console.log(video_id, currentPlayerState)
+      try {
+        const response = await fetch('TEMP_API_ENDPOINT',{
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({...currentPlayerState,video_id: video_id} )
+      })
+      if(!response.ok){
+        console.log("error adding data to the backend");
+        
+      }
+        
+      } catch (error) {
+        console.log(error)
+      }
+      
+    }
+,[video_id])
+
+
+    useEffect(()=> {
+      if(!playerState.isReady) return;
+      if(playerState.videoStateLabel === "CUED") return;
+      updateBackend(playerState)
+
+    },[playerState])
+
+  return (
+    <>
+
+    {console.log(playerState)}
+    
+
+      <div className="w-[50vw]  mx-auto h-full px-5">
+        <div id="video-container" className="relative w-full">
+            <div className="relative w-full pt-[56.25%] bg-black">
+                <div id={playerElementId} className="absolute top-0 left-0 w-full h-full">
+
+                </div>
+            </div>
+        </div>
+      </div>
+      <h1>Watch {video_id} - {playerState?.isReady? "Ready" : "Loading"} </h1>
+      <h2>Welcome to the Watch Page</h2>
+
+      <div> {playerState && JSON.stringify(playerState) } </div>
+
+      
+    </>
+  );
+}
